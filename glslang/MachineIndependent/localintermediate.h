@@ -218,6 +218,7 @@ public:
         pixelCenterInteger(false), originUpperLeft(false),
         vertexSpacing(EvsNone), vertexOrder(EvoNone), pointMode(false), earlyFragmentTests(false),
         postDepthCoverage(false), depthLayout(EldNone), depthReplacing(false),
+        hlslFunctionality1(false),
         blendEquations(0), xfbMode(false), multiStream(false),
 #ifdef NV_EXTENSIONS
         layoutOverrideCoverage(false),
@@ -567,6 +568,9 @@ public:
     void setDepthReplacing() { depthReplacing = true; }
     bool isDepthReplacing() const { return depthReplacing; }
 
+    void setHlslFunctionality1() { hlslFunctionality1 = true; }
+    bool getHlslFunctionality1() const { return hlslFunctionality1; }
+
     void addBlendEquation(TBlendEquationShift b) { blendEquations |= (1 << b); }
     unsigned int getBlendEquations() const { return blendEquations; }
 
@@ -685,6 +689,7 @@ protected:
     bool postDepthCoverage;
     TLayoutDepth depthLayout;
     bool depthReplacing;
+    bool hlslFunctionality1;
     int blendEquations;        // an 'or'ing of masks of shifts of TBlendEquationShift
     bool xfbMode;
     bool multiStream;

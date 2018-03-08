@@ -2709,83 +2709,89 @@ void TGlslangToSpvTraverser::decorateStructType(const glslang::TType& type,
         InheritQualifiers(memberQualifier, qualifier);
 
         // using -1 above to indicate a hidden member
-        if (member >= 0) {
-            builder.addMemberName(spvType, member, glslangMember.getFieldName().c_str());
-            addMemberDecoration(spvType, member, TranslateLayoutDecoration(glslangMember, memberQualifier.layoutMatrix));
-            addMemberDecoration(spvType, member, TranslatePrecisionDecoration(glslangMember));
-            // Add interpolation and auxiliary storage decorations only to top-level members of Input and Output storage classes
-            if (type.getQualifier().storage == glslang::EvqVaryingIn ||
-                type.getQualifier().storage == glslang::EvqVaryingOut) {
-                if (type.getBasicType() == glslang::EbtBlock ||
-                    glslangIntermediate->getSource() == glslang::EShSourceHlsl) {
-                    addMemberDecoration(spvType, member, TranslateInterpolationDecoration(memberQualifier));
-                    addMemberDecoration(spvType, member, TranslateAuxiliaryStorageDecoration(memberQualifier));
-                }
+        if (member < 0)
+            continue;
+
+        builder.addMemberName(spvType, member, glslangMember.getFieldName().c_str());
+        addMemberDecoration(spvType, member, TranslateLayoutDecoration(glslangMember, memberQualifier.layoutMatrix));
+        addMemberDecoration(spvType, member, TranslatePrecisionDecoration(glslangMember));
+        // Add interpolation and auxiliary storage decorations only to top-level members of Input and Output storage classes
+        if (type.getQualifier().storage == glslang::EvqVaryingIn ||
+            type.getQualifier().storage == glslang::EvqVaryingOut) {
+            if (type.getBasicType() == glslang::EbtBlock ||
+                glslangIntermediate->getSource() == glslang::EShSourceHlsl) {
+                addMemberDecoration(spvType, member, TranslateInterpolationDecoration(memberQualifier));
+                addMemberDecoration(spvType, member, TranslateAuxiliaryStorageDecoration(memberQualifier));
             }
-            addMemberDecoration(spvType, member, TranslateInvariantDecoration(memberQualifier));
+        }
+        addMemberDecoration(spvType, member, TranslateInvariantDecoration(memberQualifier));
 
-            if (type.getBasicType() == glslang::EbtBlock &&
-                qualifier.storage == glslang::EvqBuffer) {
-                // Add memory decorations only to top-level members of shader storage block
-                std::vector<spv::Decoration> memory;
-                TranslateMemoryDecoration(memberQualifier, memory);
-                for (unsigned int i = 0; i < memory.size(); ++i)
-                    addMemberDecoration(spvType, member, memory[i]);
-            }
+        if (type.getBasicType() == glslang::EbtBlock &&
+            qualifier.storage == glslang::EvqBuffer) {
+            // Add memory decorations only to top-level members of shader storage block
+            std::vector<spv::Decoration> memory;
+            TranslateMemoryDecoration(memberQualifier, memory);
+            for (unsigned int i = 0; i < memory.size(); ++i)
+                addMemberDecoration(spvType, member, memory[i]);
+        }
 
-            // Location assignment was already completed correctly by the front end,
-            // just track whether a member needs to be decorated.
-            // Ignore member locations if the container is an array, as that's
-            // ill-specified and decisions have been made to not allow this.
-            if (! type.isArray() && memberQualifier.hasLocation())
-                builder.addMemberDecoration(spvType, member, spv::DecorationLocation, memberQualifier.layoutLocation);
+        // Location assignment was already completed correctly by the front end,
+        // just track whether a member needs to be decorated.
+        // Ignore member locations if the container is an array, as that's
+        // ill-specified and decisions have been made to not allow this.
+        if (! type.isArray() && memberQualifier.hasLocation())
+            builder.addMemberDecoration(spvType, member, spv::DecorationLocation, memberQualifier.layoutLocation);
 
-            if (qualifier.hasLocation())      // track for upcoming inheritance
-                locationOffset += glslangIntermediate->computeTypeLocationSize(
-                                                glslangMember, glslangIntermediate->getStage());
+        if (qualifier.hasLocation())      // track for upcoming inheritance
+            locationOffset += glslangIntermediate->computeTypeLocationSize(
+                                            glslangMember, glslangIntermediate->getStage());
 
-            // component, XFB, others
-            if (glslangMember.getQualifier().hasComponent())
-                builder.addMemberDecoration(spvType, member, spv::DecorationComponent, glslangMember.getQualifier().layoutComponent);
-            if (glslangMember.getQualifier().hasXfbOffset())
-                builder.addMemberDecoration(spvType, member, spv::DecorationOffset, glslangMember.getQualifier().layoutXfbOffset);
-            else if (explicitLayout != glslang::ElpNone) {
-                // figure out what to do with offset, which is accumulating
-                int nextOffset;
-                updateMemberOffset(type, glslangMember, offset, nextOffset, explicitLayout, memberQualifier.layoutMatrix);
-                if (offset >= 0)
-                    builder.addMemberDecoration(spvType, member, spv::DecorationOffset, offset);
-                offset = nextOffset;
-            }
+        // component, XFB, others
+        if (glslangMember.getQualifier().hasComponent())
+            builder.addMemberDecoration(spvType, member, spv::DecorationComponent, glslangMember.getQualifier().layoutComponent);
+        if (glslangMember.getQualifier().hasXfbOffset())
+            builder.addMemberDecoration(spvType, member, spv::DecorationOffset, glslangMember.getQualifier().layoutXfbOffset);
+        else if (explicitLayout != glslang::ElpNone) {
+            // figure out what to do with offset, which is accumulating
+            int nextOffset;
+            updateMemberOffset(type, glslangMember, offset, nextOffset, explicitLayout, memberQualifier.layoutMatrix);
+            if (offset >= 0)
+                builder.addMemberDecoration(spvType, member, spv::DecorationOffset, offset);
+            offset = nextOffset;
+        }
 
-            if (glslangMember.isMatrix() && explicitLayout != glslang::ElpNone)
-                builder.addMemberDecoration(spvType, member, spv::DecorationMatrixStride, getMatrixStride(glslangMember, explicitLayout, memberQualifier.layoutMatrix));
+        if (glslangMember.isMatrix() && explicitLayout != glslang::ElpNone)
+            builder.addMemberDecoration(spvType, member, spv::DecorationMatrixStride, getMatrixStride(glslangMember, explicitLayout, memberQualifier.layoutMatrix));
 
-            // built-in variable decorations
-            spv::BuiltIn builtIn = TranslateBuiltInDecoration(glslangMember.getQualifier().builtIn, true);
-            if (builtIn != spv::BuiltInMax)
-                addMemberDecoration(spvType, member, spv::DecorationBuiltIn, (int)builtIn);
+        // built-in variable decorations
+        spv::BuiltIn builtIn = TranslateBuiltInDecoration(glslangMember.getQualifier().builtIn, true);
+        if (builtIn != spv::BuiltInMax)
+            addMemberDecoration(spvType, member, spv::DecorationBuiltIn, (int)builtIn);
 
 #ifdef NV_EXTENSIONS
-            if (builtIn == spv::BuiltInLayer) {
-                // SPV_NV_viewport_array2 extension
-                if (glslangMember.getQualifier().layoutViewportRelative){
-                    addMemberDecoration(spvType, member, (spv::Decoration)spv::DecorationViewportRelativeNV);
-                    builder.addCapability(spv::CapabilityShaderViewportMaskNV);
-                    builder.addExtension(spv::E_SPV_NV_viewport_array2);
-                }
-                if (glslangMember.getQualifier().layoutSecondaryViewportRelativeOffset != -2048){
-                    addMemberDecoration(spvType, member, (spv::Decoration)spv::DecorationSecondaryViewportRelativeNV, glslangMember.getQualifier().layoutSecondaryViewportRelativeOffset);
-                    builder.addCapability(spv::CapabilityShaderStereoViewNV);
-                    builder.addExtension(spv::E_SPV_NV_stereo_view_rendering);
-                }
+        if (builtIn == spv::BuiltInLayer) {
+            // SPV_NV_viewport_array2 extension
+            if (glslangMember.getQualifier().layoutViewportRelative){
+                addMemberDecoration(spvType, member, (spv::Decoration)spv::DecorationViewportRelativeNV);
+                builder.addCapability(spv::CapabilityShaderViewportMaskNV);
+                builder.addExtension(spv::E_SPV_NV_viewport_array2);
             }
-            if (glslangMember.getQualifier().layoutPassthrough) {
-                addMemberDecoration(spvType, member, (spv::Decoration)spv::DecorationPassthroughNV);
-                builder.addCapability(spv::CapabilityGeometryShaderPassthroughNV);
-                builder.addExtension(spv::E_SPV_NV_geometry_shader_passthrough);
+            if (glslangMember.getQualifier().layoutSecondaryViewportRelativeOffset != -2048){
+                addMemberDecoration(spvType, member, (spv::Decoration)spv::DecorationSecondaryViewportRelativeNV, glslangMember.getQualifier().layoutSecondaryViewportRelativeOffset);
+                builder.addCapability(spv::CapabilityShaderStereoViewNV);
+                builder.addExtension(spv::E_SPV_NV_stereo_view_rendering);
             }
+        }
+        if (glslangMember.getQualifier().layoutPassthrough) {
+            addMemberDecoration(spvType, member, (spv::Decoration)spv::DecorationPassthroughNV);
+            builder.addCapability(spv::CapabilityGeometryShaderPassthroughNV);
+            builder.addExtension(spv::E_SPV_NV_geometry_shader_passthrough);
+        }
 #endif
+        if (glslangIntermediate->getHlslFunctionality1() && memberQualifier.semanticName != nullptr) {
+            builder.addExtension("SPV_GOOGLE_hlsl_functionality1");
+            builder.addMemberDecoration(spvType, member, (spv::Decoration)spv::DecorationHlslSemanticGOOGLE,
+                                        memberQualifier.semanticName);
         }
     }
 
@@ -6236,6 +6242,12 @@ spv::Id TGlslangToSpvTraverser::getSymbolId(const glslang::TIntermSymbol* symbol
         builder.addExtension(spv::E_SPV_NV_geometry_shader_passthrough);
     }
 #endif
+
+    if (glslangIntermediate->getHlslFunctionality1() && symbol->getType().getQualifier().semanticName != nullptr) {
+        builder.addExtension("SPV_GOOGLE_hlsl_functionality1");
+        builder.addDecoration(id, (spv::Decoration)spv::DecorationHlslSemanticGOOGLE,
+                              symbol->getType().getQualifier().semanticName);
+    }
 
     return id;
 }

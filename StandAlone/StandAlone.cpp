@@ -101,6 +101,7 @@ enum TOptions {
     EOptionInvertY              = (1 << 30),
     EOptionDumpBareVersion      = (1 << 31),
 };
+bool targetHlslFunctionality1 = false;
 
 //
 // Return codes from main/exit().
@@ -522,8 +523,10 @@ void ProcessArguments(std::vector<std::unique_ptr<glslang::TWorkItem>>& workItem
                             } else if (strcmp(argv[1], "opengl") == 0) {
                                 setOpenGlSpv();
                                 OpenGLClientVersion = glslang::EShTargetOpenGL_450;
-                            } else
-                                Error("--target-env expected vulkan1.0, opengl, or hlsl-16bit-types");
+                            } else if (strcmp(argv[1], "hlsl_functionality1") == 0)
+                                targetHlslFunctionality1 = true;
+                            else
+                                Error("--target-env expected vulkan1.0, opengl, or hlsl_functionality1");
                         }
                         bumpArg();
                     } else if (lowerword == "variable-name" || // synonyms
@@ -874,14 +877,15 @@ void CompileAndLinkShaderUnits(std::vector<ShaderCompUnit> compUnits)
                                                                 : glslang::EShSourceGlsl,
                                         compUnit.stage, glslang::EShClientVulkan, ClientInputSemanticsVersion);
                 shader->setEnvClient(glslang::EShClientVulkan, VulkanClientVersion);
-                shader->setEnvTarget(glslang::EShTargetSpv, TargetVersion);
             } else {
                 shader->setEnvInput((Options & EOptionReadHlsl) ? glslang::EShSourceHlsl
                                                                 : glslang::EShSourceGlsl,
                                         compUnit.stage, glslang::EShClientOpenGL, ClientInputSemanticsVersion);
                 shader->setEnvClient(glslang::EShClientOpenGL, OpenGLClientVersion);
-                shader->setEnvTarget(glslang::EshTargetSpv, TargetVersion);
             }
+            shader->setEnvTarget(glslang::EShTargetSpv, TargetVersion);
+            if (targetHlslFunctionality1)
+                shader->setEnvTargetHlslFunctionality1();
         }
 
         shaders.push_back(shader);
@@ -1386,12 +1390,14 @@ void usage()
            "                                       using -S.\n"
            "  --suppress-warnings                  suppress GLSL warnings\n"
            "                                       (except as required by #extension : warn)\n"
-           "  --target-env {vulkan1.0 | vulkan1.1 | opengl} \n"
+           "  --target-env {vulkan1.0 | vulkan1.1 | opengl | hlsl_functionality1} \n"
            "                                       set execution environment that emitted code\n"
            "                                       will execute in (as opposed to the language\n"
            "                                       semantics selected by --client) defaults:\n"
-           "                                        'vulkan1.0' under '--client vulkan<ver>'\n"
-           "                                        'opengl' under '--client opengl<ver>'\n"
+           "                                          'vulkan1.0' under '--client vulkan<ver>'\n"
+           "                                          'opengl' under '--client opengl<ver>'\n"
+           "                                       'hlsl_functionality1' enables use of the\n"
+           "                                          SPV_GOOGLE_hlsl_functionality1 extension\n"
            "  --variable-name <name>               Creates a C header file that contains a\n"
            "                                       uint32_t array named <name>\n"
            "                                       initialized with the shader binary code.\n"
