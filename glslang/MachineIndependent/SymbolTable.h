@@ -538,7 +538,7 @@ protected:
 
 class TSymbolTable {
 public:
-    TSymbolTable() : uniqueId(0), noBuiltInRedeclarations(false), separateNameSpaces(false), adoptedLevels(0)
+    TSymbolTable() : noBuiltInRedeclarations(false), separateNameSpaces(false), adoptedLevels(0)
     {
         //
         // This symbol table cannot be used until push() is called.
@@ -559,7 +559,7 @@ public:
             table.push_back(symTable.table[level]);
             ++adoptedLevels;
         }
-        uniqueId = symTable.uniqueId;
+        //uniqueId = symTable.uniqueId;
         noBuiltInRedeclarations = symTable.noBuiltInRedeclarations;
         separateNameSpaces = symTable.separateNameSpaces;
     }
@@ -814,7 +814,7 @@ protected:
     int currentLevel() const { return static_cast<int>(table.size()) - 1; }
 
     std::vector<TSymbolTableLevel*> table;
-    int uniqueId;     // for unique identification in code generation
+    static int uniqueId;     // for unique identification in code generation
     bool noBuiltInRedeclarations;
     bool separateNameSpaces;
     unsigned int adoptedLevels;

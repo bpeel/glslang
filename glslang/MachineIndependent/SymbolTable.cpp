@@ -375,11 +375,13 @@ void TSymbolTable::copyTable(const TSymbolTable& copyOf)
 {
     assert(adoptedLevels == copyOf.adoptedLevels);
 
-    uniqueId = copyOf.uniqueId;
+    //uniqueId = copyOf.uniqueId;
     noBuiltInRedeclarations = copyOf.noBuiltInRedeclarations;
     separateNameSpaces = copyOf.separateNameSpaces;
     for (unsigned int i = copyOf.adoptedLevels; i < copyOf.table.size(); ++i)
         table.push_back(copyOf.table[i]->clone());
 }
+
+int TSymbolTable::uniqueId = 0;
 
 } // end namespace glslang
